@@ -1,33 +1,18 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
+import { ThemeProvider } from "@/context/ThemeContext";
+import "@/app/globals.css"; // Assicurati che Tailwind sia importato qui
 
-const inter = Inter({ 
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
-
-export const metadata: Metadata = {
-  title: "XenoCloud | Server Hosting & Bot Development",
-  description: "Soluzioni cloud professionali: VPS, Game Server, Sviluppo Bot Discord su misura e sistemi ad alta affidabilità.",
+export const metadata = {
+  title: "XenoCloud - Next-Gen Development Agency",
+  description: "Sviluppo Bot Discord, Web Dashboard e Server Minecraft professionali",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="it" className="scroll-smooth dark">
-      <head>
-        {/* Assicura la corretta scalabilità sui dispositivi mobili */}
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </head>
-      <body className={`${inter.className} bg-[#060814] text-slate-100 antialiased min-h-screen flex flex-col`}>
-        {/* Rimosso Navbar e Footer da qui perché sono già gestiti e controllati dallo stato interno di src/app/page.tsx */}
-        <div className="flex-grow flex flex-col">
+    <html lang="it" className="dark">
+      <body className="bg-slate-50 dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 min-h-screen transition-colors duration-200 antialiased">
+        <ThemeProvider>
           {children}
-        </div>
+        </ThemeProvider>
       </body>
     </html>
   );
