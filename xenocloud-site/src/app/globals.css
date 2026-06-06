@@ -1,27 +1,73 @@
+/* tailwind-config-setup */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   body {
-    @apply bg-[#060814] text-slate-100 antialiased;
+    @apply bg-[#03050d] text-slate-100 antialiased selection:bg-blue-500/30 selection:text-blue-200;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }
 
+/* --- STILE CLOUD PRELEVATO DA SCHEGGIA/VERCEL STYLE --- */
+
+/* Sfondo con pattern a griglia finissima tipico dei siti hosting premium */
+.bg-grid-pattern {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+}
+
+/* Pannello satinato scuro ad alta trasparenza */
 .glass-panel {
-  background: rgba(13, 17, 39, 0.7);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(5, 8, 22, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+/* Card con effetto glow progressivo sui bordi */
 .glass-card {
-  background: rgba(15, 22, 53, 0.4);
-  border: 1px solid rgba(59, 130, 246, 0.1);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: linear-gradient(135deg, rgba(9, 13, 36, 0.6) 0%, rgba(5, 8, 22, 0.8) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.08);
+  box-shadow: cubic-bezier(0, 0, 0, 1) 0px 0px 0px 1px rgba(0, 0, 0, 0.2);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* Animazione al passaggio del mouse: il bordo si illumina di blu elettrico e crea un'ombra morbida sottostante */
 .glass-card:hover {
-  border-color: rgba(59, 130, 246, 0.3);
-  box-shadow: 0 10px 30px -10px rgba(59, 130, 246, 0.2);
-  transform: translateY(-2px);
+  border-color: rgba(59, 130, 246, 0.35);
+  box-shadow: 0 20px 40px -15px rgba(59, 130, 246, 0.15), 0 0 0 1px rgba(59, 130, 246, 0.2);
+  transform: translateY(-4px);
+}
+
+/* Badge ed elementi interattivi luminosi */
+.cyber-badge {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  text-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+}
+
+/* Bottone con riflesso azzurro satinato */
+.btn-cyber {
+  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 0 0 1px #3b82f6, 0 4px 12px rgba(37, 99, 235, 0.3);
+  transition: all 0.2s ease;
+}
+
+.btn-cyber:hover {
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 0 0 1px #60a5fa, 0 6px 20px rgba(37, 99, 235, 0.4);
+}
+
+/* Nascondi barre di scorrimento brutte pur mantenendo il funzionamento dello scroll */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
