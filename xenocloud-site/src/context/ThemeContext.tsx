@@ -18,11 +18,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const toggleTheme = () => {
-    setIsDark(!isDark);
     if (isDark) {
+      setIsDark(false);
       document.documentElement.classList.remove("dark");
       localStorage.setItem("xenocloud_theme", "light");
     } else {
+      setIsDark(true);
       document.documentElement.classList.add("dark");
       localStorage.setItem("xenocloud_theme", "dark");
     }
