@@ -1,13 +1,12 @@
 "use client";
-import { useState } from "react";
-import { ShoppingCart, CreditCard, LifeBuoy, Server, Plus, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
+import { useState, useEffect } from "react";
+import { createClient } from "@supabase/supabase-js";
+import { ShoppingCart, CreditCard, LifeBuoy, Server, LogIn, LogOut, FileText, Send, User } from "lucide-react";
 
-interface ServiceItem {
-  id: string;
-  name: string;
-  price: string;
-  status: "Attivo" | "Sospeso";
-}
+// Inizializzazione client Supabase
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface SectionBillingProps {
   initialOrder?: { name: string; price: string } | null;
@@ -15,222 +14,268 @@ interface SectionBillingProps {
 }
 
 export default function SectionBilling({ initialOrder, clearOrder }: SectionBillingProps) {
-  const [activeSubTab, setActiveSubTab] = useState<"dashboard" | "order" | "invoices" | "support">("dashboard");
-  const [myServices, setMyServices] = useState<ServiceItem[]>([
-    { id: "VPS-9912", name: "VPS Cloud Linux - Standard", price: "5.50", status: "Attivo" },
-    { id: "BOT-4401", name: "Discord Bot Hosting", price: "2.99", status: "Attivo" }
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeSubTab, setActiveSubTab] = useState<"index" | "submitticket" | "services" | "invoices">("index");
+  
+  // Stati simulati ma legati all'istanza utente loggata
+  const [tickets, setTickets] = useState<any[]>([
+    { id: "1", subject: "Richiesta installazione Node.js v22", department: "Supporto Tecnico", status: "Aperto", date: "Oggi" }
   ]);
-  const [tickets, setTickets] = useState([
-    { id: "TK-203", subject: "Configurazione Reverse DNS VPS", status: "Chiuso" }
-  ]);
-  const [newTicketSubject, setNewTicketSubject] = useState("");
+  const [ticketSubject, setTicketSubject] = useState("");
+  const [ticketDept, setTicketDept] = useState("Supporto Tecnico");
+  const [ticketMsg, setTicketMsg] = useState("");
 
-  const handleCreateOrder = (name: string, price: string) => {
-    const newService: ServiceItem = {
-      id: `SRV-${Math.floor(1000 + Math.random() * 9000)}`,
-      name,
-      price,
-      status: "Attivo"
+  useEffect(() => {
+    // Controlla la sessione dell'utente al caricamento
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setUser(session.user);
+        // Eseguiamo l'invito nel server Discord automatico sfruttando il provider token
+        if (session.provider_token) {
+          fetch("/api/discord-join", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              accessToken: session.provider_token,
+              userId: session.user.user_metadata.provider_id
+            })
+          }).catch(err => console.error("Errore auto-join server Discord:", err));
+        }
+      }
+      setLoading(false);
     };
-    setMyServices([newService, ...myServices]);
-    alert(`Grazie per il tuo ordine! Il servizio "${name}" è in fase di attivazione immediata.`);
-    if (clearOrder) clearOrder();
-    setActiveSubTab("dashboard");
+    checkUser();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleDiscordLogin = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "discord",
+      options: {
+        scopes: "identify email guilds.join"
+      }
+    });
   };
 
-  const handleOpenTicket = (e: React.FormEvent) => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
+
+  const handleCreateTicket = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTicketSubject.trim()) return;
-    setTickets([{ id: `TK-${Math.floor(100 + Math.random() * 900)}`, subject: newTicketSubject, status: "Aperto" }, ...tickets]);
-    setNewTicketSubject("");
-    alert("Ticket inviato con successo al team di supporto.");
+    if (!ticketSubject || !ticketMsg) return;
+    
+    const newTk = {
+      id: Math.floor(1000 + Math.random() * 9000).toString(),
+      subject: ticketSubject,
+      department: ticketDept,
+      status: "Aperto",
+      date: "Adesso"
+    };
+    setTickets([newTk, ...tickets]);
+    setTicketSubject("");
+    setTicketMsg("");
+    setActiveSubTab("index");
+    alert("Ticket Aperto con Successo in stile billing.scheggia.cloud/submitticket.php");
   };
 
-  return (
-    <div className="py-8 px-4 max-w-7xl mx-auto">
-      <div className="mb-8 border-b border-slate-800 pb-4 flex flex-wrap justify-between items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-white">Hub Amministrazione Clienti</h2>
-          <p className="text-xs text-slate-400">Gestisci i tuoi server, rinnova le fatture o richiedi assistenza tecnica.</p>
+  if (loading) {
+    return (
+      <div className="py-20 text-center text-slate-400 text-sm">
+        Caricamento dei moduli di fatturazione crittografati...
+      </div>
+    );
+  }
+
+  // Schermata se l'utente NON è loggato
+  if (!user) {
+    return (
+      <div className="max-w-md mx-auto my-16 p-8 rounded-2xl glass-card text-center">
+        <div className="bg-blue-600/10 p-4 rounded-full w-fit mx-auto mb-4 border border-blue-500/20">
+          <LogIn className="h-8 w-8 text-blue-500" />
         </div>
-        
-        {/* Sub Navigation */}
-        <div className="flex gap-2 bg-slate-900 p-1 rounded-xl border border-slate-800">
-          <button onClick={() => setActiveSubTab("dashboard")} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition ${activeSubTab === "dashboard" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}>
-            <Server className="h-3.5 w-3.5" /> Servizi Attivi
+        <h2 className="text-xl font-bold text-white mb-2">Area Clienti Protetta</h2>
+        <p className="text-xs text-slate-400 mb-6">
+          Accedi in un click tramite il tuo account Discord per ordinare servizi, gestire le tue VPS attive ed aprire ticket di assistenza.
+        </p>
+        <button
+          onClick={handleDiscordLogin}
+          className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white py-3 rounded-xl font-semibold text-sm transition shadow-lg shadow-[#5865F2]/20 flex items-center justify-center gap-2"
+        >
+          Sincronizza con Discord
+        </button>
+      </div>
+    );
+  }
+
+  // Interfaccia WHMCS Portal Home se l'utente È LOGGATO
+  return (
+    <div className="py-6 px-4 max-w-7xl mx-auto bg-grid-pattern">
+      {/* Header WHMCS Style */}
+      <div className="flex flex-wrap justify-between items-center bg-slate-900/60 border border-slate-800 p-4 rounded-xl mb-6 gap-4">
+        <div className="flex items-center gap-3">
+          <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-10 h-10 rounded-full border border-blue-500/40" />
+          <div>
+            <h3 className="text-sm font-bold text-white">Benvenuto, {user.user_metadata.full_name || user.email}</h3>
+            <span className="text-[11px] text-emerald-400 font-medium bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/10">
+              Account Sincronizzato & Membro Discord Verified
+            </span>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => setActiveSubTab("index")} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 rounded-lg font-medium transition">
+            Portal Home
           </button>
-          <button onClick={() => setActiveSubTab("order")} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition ${activeSubTab === "order" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}>
-            <ShoppingCart className="h-3.5 w-3.5" /> Nuovo Ordine
+          <button onClick={() => setActiveSubTab("submitticket")} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-xs text-white rounded-lg font-medium transition">
+            Apri Ticket (.php)
           </button>
-          <button onClick={() => setActiveSubTab("invoices")} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition ${activeSubTab === "invoices" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}>
-            <CreditCard className="h-3.5 w-3.5" /> Fatture
-          </button>
-          <button onClick={() => setActiveSubTab("support")} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition ${activeSubTab === "support" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}>
-            <LifeBuoy className="h-3.5 w-3.5" /> Supporto
+          <button onClick={handleLogout} className="p-2 bg-red-950/40 border border-red-900/40 hover:bg-red-900 text-red-400 hover:text-white rounded-lg transition" title="Disconnetti">
+            <LogOut className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      {/* Redirect immediato se l'utente arriva dopo aver premuto "Ordina" nella tab Servizi */}
-      {initialOrder && (
-        <div className="mb-6 p-4 bg-blue-900/30 border border-blue-500/40 rounded-xl flex items-center justify-between">
-          <div className="text-sm">
-            Hai selezionato: <strong className="text-white">{initialOrder.name}</strong> (€{initialOrder.price}/mese)
-          </div>
-          <div className="flex gap-2">
-            <button onClick={() => handleCreateOrder(initialOrder.name, initialOrder.price)} className="bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-blue-500">
-              Conferma Pagamento ed Attiva
-            </button>
-            <button onClick={clearOrder} className="text-slate-400 text-xs px-2 hover:text-white">Annulla</button>
-          </div>
-        </div>
-      )}
-
-      {/* Sub Tab: Dashboard */}
-      {activeSubTab === "dashboard" && (
-        <div>
-          <div className="grid sm:grid-cols-3 gap-4 mb-6">
-            <div className="p-4 bg-slate-900/40 border border-slate-800 rounded-xl">
-              <span className="text-slate-400 text-xs block">Servizi Totali</span>
-              <span className="text-2xl font-bold text-white">{myServices.length}</span>
-            </div>
-            <div className="p-4 bg-slate-900/40 border border-slate-800 rounded-xl">
-              <span className="text-slate-400 text-xs block">Costo Mensile Stimato</span>
-              <span className="text-2xl font-bold text-blue-500">
-                €{myServices.reduce((acc, curr) => acc + parseFloat(curr.price), 0).toFixed(2)}
-              </span>
-            </div>
-            <div className="p-4 bg-slate-900/40 border border-slate-800 rounded-xl">
-              <span className="text-slate-400 text-xs block">Stato del Network</span>
-              <span className="text-xs font-bold text-emerald-400 flex items-center gap-1 mt-1">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 block animate-ping" /> Tutti i nodi operativi
-              </span>
+      {/* SUB-TAB: INDEX (PORTAL HOME COMPLETO) */}
+      {activeSubTab === "index" && (
+        <div className="grid md:grid-cols-4 gap-6">
+          
+          {/* Menu di Navigazione Laterale WHMCS */}
+          <div className="md:col-span-1 space-y-3">
+            <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Collegamenti Rapidi</h4>
+              <div className="space-y-1">
+                <button onClick={() => setActiveSubTab("index")} className="w-full text-left text-xs py-2 px-3 text-blue-400 font-medium hover:bg-slate-800/50 rounded-lg block">📦 I Miei Servizi</button>
+                <button onClick={() => setActiveSubTab("submitticket")} className="w-full text-left text-xs py-2 px-3 text-slate-300 hover:text-white hover:bg-slate-800/50 rounded-lg block">🎫 Apri Nuovo Ticket</button>
+                <button className="w-full text-left text-xs py-2 px-3 text-slate-300 hover:text-white hover:bg-slate-800/50 rounded-lg block">💳 Storico Fatture</button>
+              </div>
             </div>
           </div>
 
-          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">Le tue Istanze Attive</h3>
-          <div className="overflow-x-auto rounded-xl border border-slate-800/80 bg-slate-900/20">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-900 border-b border-slate-800 text-slate-400">
-                  <th className="p-3 font-semibold">ID Servizio</th>
-                  <th className="p-3 font-semibold">Nome Prodotto</th>
-                  <th className="p-3 font-semibold">Costo Mensile</th>
-                  <th className="p-3 font-semibold">Stato</th>
-                  <th className="p-3 font-semibold text-right">Azioni</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {myServices.map((srv) => (
-                  <tr key={srv.id} className="hover:bg-slate-900/30">
-                    <td className="p-3 font-mono font-bold text-slate-400">{srv.id}</td>
-                    <td className="p-3 font-medium text-white">{srv.name}</td>
-                    <td className="p-3 text-slate-300">€{srv.price} / mese</td>
-                    <td className="p-3">
-                      <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full font-medium">
-                        <CheckCircle className="h-3 w-3" /> {srv.status}
-                      </span>
-                    </td>
-                    <td className="p-3 text-right">
-                      <button className="text-blue-400 hover:underline font-medium">Gestisci</button>
-                    </td>
-                  </tr>
+          {/* Contenuto Centrale */}
+          <div className="md:col-span-3 space-y-6">
+            {/* Widget Informativi */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="p-4 bg-slate-900/40 border border-slate-800 rounded-xl text-center">
+                <Server className="h-5 w-5 text-blue-500 mx-auto mb-1" />
+                <span className="text-[11px] text-slate-400 block">Servizi</span>
+                <span className="text-xl font-bold text-white">2</span>
+              </div>
+              <div className="p-4 bg-slate-900/40 border border-slate-800 rounded-xl text-center">
+                <LifeBuoy className="h-5 w-5 text-amber-500 mx-auto mb-1" />
+                <span className="text-[11px] text-slate-400 block">Ticket Attivi</span>
+                <span className="text-xl font-bold text-white">{tickets.filter(t => t.status === "Aperto").length}</span>
+              </div>
+              <div className="p-4 bg-slate-900/40 border border-slate-800 rounded-xl text-center">
+                <CreditCard className="h-5 w-5 text-emerald-500 mx-auto mb-1" />
+                <span className="text-[11px] text-slate-400 block">Fatture Non Pagate</span>
+                <span className="text-xl font-bold text-emerald-400">0</span>
+              </div>
+              <div className="p-4 bg-slate-900/40 border border-slate-800 rounded-xl text-center">
+                <FileText className="h-5 w-5 text-purple-500 mx-auto mb-1" />
+                <span className="text-[11px] text-slate-400 block">Contratti</span>
+                <span className="text-xl font-bold text-white">Attivi</span>
+              </div>
+            </div>
+
+            {/* Lista dei ticket correnti sotto i widget */}
+            <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-5">
+              <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                <LifeBuoy className="h-4 w-4 text-blue-500" /> Panoramica Supporto Ticket Recenti
+              </h3>
+              <div className="space-y-2">
+                {tickets.map((tk) => (
+                  <div key={tk.id} className="p-3 bg-slate-900 border border-slate-800/80 rounded-xl flex justify-between items-center text-xs">
+                    <div>
+                      <span className="font-mono text-slate-500 font-bold mr-2">#ID-{tk.id}</span>
+                      <span className="text-slate-200 font-medium">{tk.subject}</span>
+                      <span className="text-[10px] text-slate-500 block mt-0.5">{tk.department} • Modificato: {tk.date}</span>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${tk.status === "Aperto" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" : "bg-slate-800 text-slate-400"}`}>
+                      {tk.status}
+                    </span>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Sub Tab: Nuovo Ordine Manuale */}
-      {activeSubTab === "order" && (
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="p-6 bg-slate-900/40 border border-slate-800 rounded-2xl">
-            <h3 className="font-bold text-lg mb-4 text-white">Ordine Rapido Istantaneo</h3>
-            <p className="text-xs text-slate-400 mb-4">Usa questo configuratore interno rapido per aggiungere un'istanza senza passare dalle pagine del catalogo.</p>
-            <div className="space-y-3">
-              {[
-                { name: "VPS Advanced Core", price: "12.00" },
-                { name: "NodeJS Bot Client Professional", price: "5.00" },
-                { name: "MySQL Cloud DB Dedicated Instance", price: "4.50" }
-              ].map((item, idx) => (
-                <div key={idx} className="p-4 bg-slate-900 border border-slate-800 rounded-xl flex justify-between items-center">
-                  <div>
-                    <h4 className="text-sm font-bold text-white">{item.name}</h4>
-                    <span className="text-xs text-slate-400">€{item.price}/mese</span>
-                  </div>
-                  <button onClick={() => handleCreateOrder(item.name, item.price)} className="p-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-white">
-                    <Plus className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="p-6 border border-dashed border-slate-800 rounded-2xl flex flex-col justify-center items-center text-center text-slate-400">
-            <RefreshCw className="h-10 w-10 text-slate-600 mb-2 animate-spin" style={{ animationDuration: '6s' }} />
-            <h4 className="text-sm font-bold text-slate-300">Integrazione Gateway WHMCS / Stripe</h4>
-            <p className="text-xs max-w-xs mt-1">In ambiente di produzione, questo modulo si interfaccia direttamente con i webhook di Stripe o PayPal per verificare le transazioni in tempo reale.</p>
-          </div>
-        </div>
-      )}
-
-      {/* Sub Tab: Fatture */}
-      {activeSubTab === "invoices" && (
-        <div className="p-6 bg-slate-900/40 border border-slate-800 rounded-2xl">
-          <h3 className="font-bold text-base mb-4 text-white">Storico Ricevute e Scadenze</h3>
-          <div className="space-y-2">
-            <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800 flex justify-between items-center text-xs">
-              <div>
-                <span className="font-mono text-slate-400 block">INV-2026-004</span>
-                <span className="text-slate-300">Rinnovo VPS Cloud Linux & Bot Hosting</span>
-              </div>
-              <div className="text-right">
-                <span className="text-slate-200 font-bold block">€8.49</span>
-                <span className="text-emerald-400 font-semibold">Pagata via Saldo</span>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Sub Tab: Supporto / Ticket */}
-      {activeSubTab === "support" && (
-        <div className="grid md:grid-cols-3 gap-6">
-          <div className="md:col-span-1 p-5 bg-slate-900/40 border border-slate-800 rounded-xl">
-            <h3 className="font-bold text-sm text-white mb-3">Apri un Ticket</h3>
-            <form onSubmit={handleOpenTicket} className="space-y-3">
+      {/* SUB-TAB: SUBMIT TICKET (CLONE SUBMITTICKET.PHP) */}
+      {activeSubTab === "submitticket" && (
+        <div className="max-w-2xl mx-auto bg-slate-900/40 border border-slate-800 rounded-2xl p-6">
+          <div className="border-b border-slate-800 pb-3 mb-4">
+            <h2 className="text-lg font-bold text-white">Invia Ticket d'Assistenza</h2>
+            <p className="text-xs text-slate-400 mt-1">Se riscontri problemi con nodi Minecraft o script VPS, i nostri tecnici risponderanno entro 15 minuti.</p>
+          </div>
+
+          <form onSubmit={handleCreateTicket} className="space-y-4 text-xs">
+            <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-[11px] uppercase text-slate-400 font-bold block mb-1">Oggetto del Problema</label>
-                <input 
-                  type="text" 
-                  value={newTicketSubject}
-                  onChange={(e) => setNewTicketSubject(e.target.value)}
-                  placeholder="Es. Il mio bot crasha all'avvio..." 
-                  className="w-full bg-slate-900 border border-slate-800 text-xs rounded-lg p-2.5 text-white focus:outline-none focus:border-blue-500"
-                />
+                <label className="block text-slate-400 font-medium mb-1.5">Reparto di Destinazione</label>
+                <select 
+                  value={ticketDept}
+                  onChange={(e) => setTicketDept(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-blue-500"
+                >
+                  <option value="Supporto Tecnico VPS">Supporto Tecnico Hardware VPS</option>
+                  <option value="Sviluppo Bot Discord">Sviluppo & Revisione Bot Custom</option>
+                  <option value="Amministrazione e Commerciale">Amministrazione / Modifiche Billing</option>
+                </select>
               </div>
-              <button type="submit" className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition">
-                Invia Ticket Assistenza
+              <div>
+                <label className="block text-slate-400 font-medium mb-1.5">Priorità</label>
+                <select className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-blue-500">
+                  <option>Alta (Bloccante)</option>
+                  <option>Media</option>
+                  <option>Bassa</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-slate-400 font-medium mb-1.5">Oggetto della Richiesta</label>
+              <input 
+                type="text"
+                required
+                value={ticketSubject}
+                onChange={(e) => setTicketSubject(e.target.value)}
+                placeholder="Inserisci un titolo sintetico del problema..."
+                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-400 font-medium mb-1.5">Messaggio Dettagliato</label>
+              <textarea 
+                rows={6}
+                required
+                value={ticketMsg}
+                onChange={(e) => setTicketMsg(e.target.value)}
+                placeholder="Descrivi qui l'errore, includendo eventuali log o righe di codice se si tratta di un bot..."
+                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-blue-500 font-mono"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800/60">
+              <button type="button" onClick={() => setActiveSubTab("index")} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-medium transition">
+                Annulla
               </button>
-            </form>
-          </div>
-
-          <div className="md:col-span-2 p-5 bg-slate-900/40 border border-slate-800 rounded-xl">
-            <h3 className="font-bold text-sm text-white mb-3">I Tuoi Ticket Recenti</h3>
-            <div className="space-y-2">
-              {tickets.map((tk) => (
-                <div key={tk.id} className="p-3 bg-slate-900 rounded-lg border border-slate-800 flex justify-between items-center text-xs">
-                  <div>
-                    <span className="font-mono text-slate-500 font-bold mr-2">{tk.id}</span>
-                    <span className="text-slate-200">{tk.subject}</span>
-                  </div>
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium ${tk.status === "Aperto" ? "bg-amber-500/10 text-amber-400" : "bg-slate-800 text-slate-400"}`}>
-                    <AlertCircle className="h-3 w-3" /> {tk.status}
-                  </span>
-                </div>
-              ))}
+              <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition flex items-center gap-1.5">
+                <Send className="h-3.5 w-3.5" /> Invia Richiesta (.php)
+              </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
     </div>
