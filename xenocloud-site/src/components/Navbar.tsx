@@ -2,8 +2,8 @@
 import { Server, LayoutDashboard } from "lucide-react";
 
 interface NavbarProps {
-  activeTab?: string;
-  setActiveTab?: (tab: string) => void;
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
 }
 
 export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
@@ -17,7 +17,7 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
   return (
     <nav className="sticky top-0 z-50 border-b border-slate-800/60 bg-[#060814]/70 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActiveTab?.("home")}>
+        <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActiveTab("home")}>
           <div className="bg-blue-600 p-2 rounded-lg text-white shadow-lg shadow-blue-600/30">
             <Server className="h-5 w-5" />
           </div>
@@ -30,7 +30,7 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
           {navItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => setActiveTab?.(item.id)}
+              onClick={() => setActiveTab(item.id)}
               className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
                 activeTab === item.id 
                   ? "bg-blue-600 text-white shadow-md" 
@@ -44,7 +44,7 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
 
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => setActiveTab?.("billing")}
+            onClick={() => setActiveTab("billing")}
             className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition shadow-lg shadow-blue-500/20"
           >
             <LayoutDashboard className="h-4 w-4" />

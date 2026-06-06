@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import SectionHome from "@/components/SectionHome";
 import SectionAbout from "@/components/SectionAbout";
 import SectionServices from "@/components/SectionServices";
@@ -41,6 +42,7 @@ export default function Page() {
           )}
         </div>
       </div>
+      <Footer />
     </div>
   );
 }
